@@ -25,15 +25,19 @@ import net.jodah.failsafe.SyncFailsafe;
 import org.apache.safeguard.impl.circuitbreaker.FailsafeCircuitBreaker;
 import org.apache.safeguard.impl.retry.FailsafeRetryDefinition;
 
+import javax.interceptor.InvocationContext;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 
 public class SyncFailsafeExecutionPlan implements ExecutionPlan {
     private final FailsafeRetryDefinition retryDefinition;
     private final FailsafeCircuitBreaker failsafeCircuitBreaker;
+    private final Callable fallback;
 
-    SyncFailsafeExecutionPlan(FailsafeRetryDefinition retryDefinition, FailsafeCircuitBreaker failsafeCircuitBreaker) {
+    SyncFailsafeExecutionPlan(FailsafeRetryDefinition retryDefinition, FailsafeCircuitBreaker failsafeCircuitBreaker, Callable fallback) {
         this.retryDefinition = retryDefinition;
         this.failsafeCircuitBreaker = failsafeCircuitBreaker;
+        this.fallback = fallback;
         validateConfig();
     }
 
@@ -44,10 +48,10 @@ public class SyncFailsafeExecutionPlan implements ExecutionPlan {
     }
 
     @Override
-    public <T> T execute(Callable<T> callable) {
+    public <T> T execute(Function<InvocationContext, T> function, InvocationContext invocationContext) {
         SyncFailsafe<?> syncFailsafe = getSyncFailsafe();
         try {
-            return syncFailsafe.get(callable);
+            return syncFailsafe.get(() -> function.apply(invocationContext));
         } catch (CircuitBreakerOpenException e) {
             throw new org.eclipse.microprofile.faulttolerance.exceptions.CircuitBreakerOpenException(e);
         }
@@ -66,6 +70,9 @@ public class SyncFailsafeExecutionPlan implements ExecutionPlan {
                 syncFailsafe = Failsafe.with(retryDefinition.getRetryPolicy())
                         .with(failsafeCircuitBreaker.getDefinition().getCircuitBreaker());
             }
+        }
+        if(this.fallback != null) {
+            syncFailsafe = syncFailsafe.withFallback(this.fallback);
         }
         return syncFailsafe;
     }

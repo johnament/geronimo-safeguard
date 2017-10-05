@@ -28,8 +28,6 @@ import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public class AsyncFailsafeExecutionPlan extends SyncFailsafeExecutionPlan {
     private final ScheduledExecutorService executorService;
@@ -37,9 +35,10 @@ public class AsyncFailsafeExecutionPlan extends SyncFailsafeExecutionPlan {
 
     public AsyncFailsafeExecutionPlan(FailsafeRetryDefinition retryDefinition,
                                       FailsafeCircuitBreaker failsafeCircuitBreaker,
+                                      Callable fallback,
                                       ScheduledExecutorService executorService,
                                       Duration timeout) {
-        super(retryDefinition, failsafeCircuitBreaker);
+        super(retryDefinition, failsafeCircuitBreaker, fallback);
         this.executorService = executorService;
         this.timeout = timeout;
     }

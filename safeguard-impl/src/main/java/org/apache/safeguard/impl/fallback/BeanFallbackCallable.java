@@ -17,17 +17,25 @@
  *  under the License.
  */
 
-package org.apache.safeguard.impl.executionPlans;
+package org.apache.safeguard.impl.fallback;
 
-import org.testng.annotations.Test;
+import org.eclipse.microprofile.faulttolerance.ExecutionContext;
+import org.eclipse.microprofile.faulttolerance.FallbackHandler;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import java.util.concurrent.Callable;
 
-public class SyncFailsafeExecutionPlanTest {
-    @Test
-    public void shouldThrowExceptionWithInvalidConfig() {
-        assertThatThrownBy(() -> new SyncFailsafeExecutionPlan(null, null, null))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("For non-async invocations, must have at least one of RetryDefintion or CircuitBreaker defined");
+public class BeanFallbackCallable<T> implements Callable<T> {
+
+    private final FallbackHandler<T> delegate;
+    private final ExecutionContext executionContext;
+
+    public BeanFallbackCallable(FallbackHandler<T> delegate, ExecutionContext executionContext) {
+        this.delegate = delegate;
+        this.executionContext = executionContext;
+    }
+
+    @Override
+    public T call() throws Exception {
+        return delegate.handle(executionContext);
     }
 }
